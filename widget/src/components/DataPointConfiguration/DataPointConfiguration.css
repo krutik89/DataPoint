@@ -52,6 +52,20 @@
   padding-top: var(--spacing-03);
 }
 
+.dpc-day-selector-full {
+  width: 100%;
+}
+
+.dpc-day-selector-full .fds-date-selector-group__row {
+  display: flex;
+  width: 100%;
+  gap: var(--spacing-02);
+}
+
+.dpc-day-selector-full .fds-date-selector-group__row > * {
+  flex: 1;
+}
+
 .dpc-duration-row {
   position: relative;
   width: 100%;
@@ -134,4 +148,57 @@
   background: transparent;
   cursor: pointer;
   opacity: 0;
+}
+
+/* ── Data Alert list ──────────────────────────────────────────── */
+.dpc-alert-list {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-02);
+  border-top: 1px solid var(--border-gray-subtle);
+  padding-top: var(--spacing-03);
+}
+
+.dpc-alert-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--spacing-02) var(--spacing-03);
+  background: var(--background-default-secondary);
+  border-radius: 6px;
+  gap: var(--spacing-03);
+}
+
+.dpc-alert-info {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-03);
+  flex: 1;
+  min-width: 0;
+}
+
+.dpc-alert-rule {
+  color: var(--text-default-primary);
+  white-space: nowrap;
+}
+
+.dpc-alert-swatches {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.dpc-alert-swatch {
+  display: inline-block;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  border: 1px solid var(--border-gray-subtle);
+  flex-shrink: 0;
+}
+
+.dpc-alert-row--editing {
+  outline: 2px solid var(--border-brand-default);
+  outline-offset: -2px;
 }

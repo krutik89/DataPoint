@@ -3,6 +3,10 @@ import type {
   DataPointSource,
   Device,
   DevicesPage,
+  Duration,
+  DurationEvent,
+  DurationNavigation,
+  DurationPeriod,
   Operator,
 } from './types';
 
@@ -224,4 +228,56 @@ export async function getDataPointValue(
   }
 
   return findFirstDataValue(json.data);
+}
+
+// ─── Duration resolver ────────────────────────────────────────────────────────
+
+function resolveEvent(
+  ref: Date,
+  n: number,
+  period: DurationPeriod,
+  event: DurationEvent,
+  navigation: DurationNavigation,
+): number {
+  const dir = navigation === 'previous' ? -1 : 1;
+  const anchor = new Date(ref);
+
+  switch (period) {
+    case 'hour':  anchor.setHours(anchor.getHours() + dir * n); break;
+    case 'day':   anchor.setDate(anchor.getDate() + dir * n); break;
+    case 'week':  anchor.setDate(anchor.getDate() + dir * n * 7); break;
+    case 'month': anchor.setMonth(anchor.getMonth() + dir * n); break;
+    case 'year':  anchor.setFullYear(anchor.getFullYear() + dir * n); break;
+  }
+
+  if (event === 'now') return anchor.getTime();
+
+  if (event === 'start') {
+    switch (period) {
+      case 'hour':  anchor.setMinutes(0, 0, 0); break;
+      case 'day':   anchor.setHours(0, 0, 0, 0); break;
+      case 'week':  anchor.setDate(anchor.getDate() - anchor.getDay()); anchor.setHours(0, 0, 0, 0); break;
+      case 'month': anchor.setDate(1); anchor.setHours(0, 0, 0, 0); break;
+      case 'year':  anchor.setMonth(0, 1); anchor.setHours(0, 0, 0, 0); break;
+    }
+    return anchor.getTime();
+  }
+
+  // event === 'end'
+  switch (period) {
+    case 'hour':  anchor.setMinutes(59, 59, 999); break;
+    case 'day':   anchor.setHours(23, 59, 59, 999); break;
+    case 'week':  anchor.setDate(anchor.getDate() - anchor.getDay() + 6); anchor.setHours(23, 59, 59, 999); break;
+    case 'month': anchor.setMonth(anchor.getMonth() + 1, 0); anchor.setHours(23, 59, 59, 999); break;
+    case 'year':  anchor.setMonth(11, 31); anchor.setHours(23, 59, 59, 999); break;
+  }
+  return anchor.getTime();
+}
+
+export function resolveDuration(d: Duration): { startTime: number; endTime: number } {
+  const now = new Date();
+  return {
+    startTime: resolveEvent(now, d.xNumber, d.xPeriod, d.xEvent, d.navigation),
+    endTime:   resolveEvent(now, d.yNumber, d.yPeriod, d.yEvent, d.navigation),
+  };
 }

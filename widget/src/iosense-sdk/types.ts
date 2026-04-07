@@ -51,6 +51,19 @@ export interface Duration {
 
 export type SourceType = 'device' | 'cluster' | 'compute';
 
+export type AlertOperator = '>' | '<' | '>=' | '<=' | '==' | '!=';
+
+export interface AlertCondition {
+  id: string;
+  operator: AlertOperator;
+  value: number;
+  backgroundColor?: string;
+  textColor?: string;
+  valueColor?: string;
+  unitColor?: string;
+  borderColor?: string;
+}
+
 export interface DataPointSource {
   sourceType: SourceType;
 
@@ -92,6 +105,9 @@ export interface WidgetConfig {
   // Durations (DatePicker presets)
   durations?: Duration[];
   defaultDurationId?: string;
+
+  // Data alerts
+  alerts?: AlertCondition[];
 
   // Cycle time
   cycleIdentifier?: 'start' | 'end';

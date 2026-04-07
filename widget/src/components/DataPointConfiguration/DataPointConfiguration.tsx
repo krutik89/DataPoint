@@ -9,6 +9,7 @@ import {
   DateSelectorButton,
   DateSelectorGroup,
   DropdownMenu,
+  IconButton,
   Radio,
   RadioGroup,
   SelectInput,
@@ -20,6 +21,8 @@ import {
 } from '@faclon-labs/design-sdk';
 import { findUserDevices, getDeviceSpecificMetadata } from '../../iosense-sdk/api';
 import type {
+  AlertCondition,
+  AlertOperator,
   ClusterOperator,
   DataPointSource,
   Device,
@@ -51,6 +54,28 @@ const CLUSTER_OPERATORS: { value: ClusterOperator; label: string }[] = [
   { value: 'median', label: 'Median' },
   { value: 'mode',   label: 'Mode' },
 ];
+
+const ALERT_OPERATORS: { value: AlertOperator; label: string }[] = [
+  { value: '>',  label: '> Greater than' },
+  { value: '<',  label: '< Less than' },
+  { value: '>=', label: '≥ Greater than or equal' },
+  { value: '<=', label: '≤ Less than or equal' },
+  { value: '==', label: '= Equal to' },
+  { value: '!=', label: '≠ Not equal to' },
+];
+
+function makeBlankAlert(): AlertCondition {
+  return {
+    id: Math.random().toString(36).slice(2),
+    operator: '>',
+    value: 0,
+    backgroundColor: '',
+    textColor: '',
+    valueColor: '',
+    unitColor: '',
+    borderColor: '',
+  };
+}
 
 const TIMEZONE_OPTIONS = [
   'Asia/Calcutta',
@@ -121,6 +146,7 @@ const MINUTE_OPTIONS = Array.from({ length: 60 }, (_, i) => ({
 }));
 
 const DAY_OPTIONS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+const DAY_LABELS  = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
 
 const TIME_RANGE_OPTIONS = [
   { value: '1',   label: 'Last 1 hour' },
@@ -441,6 +467,11 @@ export function DataPointConfiguration({
   const [draftDuration, setDraftDuration] = useState<Duration>(() => makeBlankDuration());
   const [editingDurationId, setEditingDurationId] = useState<string | null>(null);
 
+  // Alert draft state
+  const [draftAlert, setDraftAlert] = useState<AlertCondition>(() => makeBlankAlert());
+  const [editingAlertId, setEditingAlertId] = useState<string | null>(null);
+  const alertOpDd = useDropdown();
+
   // Timezone autocomplete state
   const [timezoneQuery, setTimezoneQuery] = useState(config.timezone ?? 'Asia/Calcutta');
   const [timezoneOpen, setTimezoneOpen] = useState(false);
@@ -752,7 +783,11 @@ export function DataPointConfiguration({
 
   // ── Tabs ─────────────────────────────────────────────────────────────────
 
-  const renderDataTab = () => (
+  const renderDataTab = () => {
+    const alerts = config.alerts ?? [];
+    const selectedAlertOp = ALERT_OPERATORS.find((o) => o.value === draftAlert.operator);
+
+    return (
     <div className="dpc-tab">
       <Accordion mode="multiple" defaultExpandedKeys={['display', 'source']}>
         <AccordionItem value="display" title="Display">
@@ -816,9 +851,190 @@ export function DataPointConfiguration({
             />
           </div>
         </AccordionItem>
+
+        <AccordionItem value="alerts" title="Data Alerts">
+          <div className="dpc-acc-body">
+            {/* Operator + Value */}
+            <div className="dpc-row">
+              <SelectInput
+                label="Operator"
+                name="dp-alert-op"
+                value={selectedAlertOp?.label ?? ''}
+                isOpen={alertOpDd.open}
+                onClick={alertOpDd.toggle}
+              >
+                <DropdownMenu>
+                  {ALERT_OPERATORS.map((op) => (
+                    <ActionListItem
+                      key={op.value}
+                      id={op.value}
+                      title={op.label}
+                      selectionType="Single"
+                      isSelected={op.value === draftAlert.operator}
+                      onClick={() => {
+                        setDraftAlert((a) => ({ ...a, operator: op.value }));
+                        alertOpDd.close();
+                      }}
+                    />
+                  ))}
+                </DropdownMenu>
+              </SelectInput>
+              <TextInput
+                label="Value"
+                name="dp-alert-value"
+                type="number"
+                value={String(draftAlert.value)}
+                onChange={({ value: v }: { value: string }) => {
+                  const n = parseFloat(v);
+                  if (!isNaN(n)) setDraftAlert((a) => ({ ...a, value: n }));
+                }}
+              />
+            </div>
+
+            {/* Color fields */}
+            <div className="dpc-row">
+              <ColorInput
+                label="Background color"
+                name="dp-alert-bg"
+                value={draftAlert.backgroundColor ?? ''}
+                onChange={(v) => setDraftAlert((a) => ({ ...a, backgroundColor: v }))}
+              />
+              <ColorInput
+                label="Text color"
+                name="dp-alert-text"
+                value={draftAlert.textColor ?? ''}
+                onChange={(v) => setDraftAlert((a) => ({ ...a, textColor: v }))}
+              />
+            </div>
+            <div className="dpc-row">
+              <ColorInput
+                label="Value color"
+                name="dp-alert-value-color"
+                value={draftAlert.valueColor ?? ''}
+                onChange={(v) => setDraftAlert((a) => ({ ...a, valueColor: v }))}
+              />
+              <ColorInput
+                label="Unit color"
+                name="dp-alert-unit"
+                value={draftAlert.unitColor ?? ''}
+                onChange={(v) => setDraftAlert((a) => ({ ...a, unitColor: v }))}
+              />
+            </div>
+            <ColorInput
+              label="Border color"
+              name="dp-alert-border"
+              value={draftAlert.borderColor ?? ''}
+              onChange={(v) => setDraftAlert((a) => ({ ...a, borderColor: v }))}
+            />
+
+            {/* Add / Save button */}
+            <div className="dpc-actions-right">
+              {editingAlertId && (
+                <Button
+                  label="Cancel"
+                  variant="Tertiary"
+                  size="Small"
+                  onClick={() => {
+                    setEditingAlertId(null);
+                    setDraftAlert(makeBlankAlert());
+                  }}
+                />
+              )}
+              <Button
+                label={editingAlertId ? 'Save Condition' : 'Add Condition'}
+                variant="Secondary"
+                size="Small"
+                onClick={() => {
+                  if (editingAlertId) {
+                    handleChange({
+                      ...config,
+                      alerts: alerts.map((x) =>
+                        x.id === editingAlertId ? { ...draftAlert, id: editingAlertId } : x
+                      ),
+                    });
+                    setEditingAlertId(null);
+                  } else {
+                    handleChange({ ...config, alerts: [...alerts, { ...draftAlert }] });
+                  }
+                  setDraftAlert(makeBlankAlert());
+                }}
+              />
+            </div>
+
+            {/* Conditions list */}
+            {alerts.length > 0 && (
+              <div className="dpc-alert-list">
+                {alerts.map((a) => (
+                  <div key={a.id} className={`dpc-alert-row${editingAlertId === a.id ? ' dpc-alert-row--editing' : ''}`}>
+                    <div className="dpc-alert-info">
+                      <span className="dpc-alert-rule BodySmallSemibold">
+                        value {a.operator} {a.value}
+                      </span>
+                      <div className="dpc-alert-swatches">
+                        {a.backgroundColor && (
+                          <span className="dpc-alert-swatch" style={{ background: a.backgroundColor }} title="Background" />
+                        )}
+                        {a.textColor && (
+                          <span className="dpc-alert-swatch" style={{ background: a.textColor }} title="Text" />
+                        )}
+                        {a.valueColor && (
+                          <span className="dpc-alert-swatch" style={{ background: a.valueColor }} title="Value" />
+                        )}
+                        {a.unitColor && (
+                          <span className="dpc-alert-swatch" style={{ background: a.unitColor }} title="Unit" />
+                        )}
+                        {a.borderColor && (
+                          <span className="dpc-alert-swatch" style={{ background: a.borderColor }} title="Border" />
+                        )}
+                      </div>
+                    </div>
+                    <div className="dpc-duration-actions" style={{ display: 'flex' }}>
+                      <IconButton
+                        icon={
+                          <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <path d="M11.586 2a2 2 0 0 1 2.828 2.828l-8.5 8.5A2 2 0 0 1 4.5 14H3a1 1 0 0 1-1-1v-1.5a2 2 0 0 1 .586-1.414l8.5-8.5ZM12 3.414 12.586 4 4.5 12.086 3 12v-1.5l8.086-8.086Z" fill="currentColor"/>
+                          </svg>
+                        }
+                        variant="Tertiary"
+                        size="Small"
+                        title="Edit condition"
+                        onClick={() => {
+                          setDraftAlert({ ...a });
+                          setEditingAlertId(a.id);
+                        }}
+                      />
+                      <IconButton
+                        icon={
+                          <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <path d="M6 2a1 1 0 0 0-1 1H3a1 1 0 0 0 0 2h10a1 1 0 0 0 0-2h-2a1 1 0 0 0-1-1H6ZM4 7a1 1 0 0 1 1 1v4a1 1 0 0 0 1 1h4a1 1 0 0 0 1-1V8a1 1 0 1 1 2 0v4a3 3 0 0 1-3 3H6a3 3 0 0 1-3-3V8a1 1 0 0 1 1-1Z" fill="currentColor"/>
+                          </svg>
+                        }
+                        variant="Tertiary"
+                        color="Negative"
+                        size="Small"
+                        title="Remove condition"
+                        onClick={() => {
+                          if (editingAlertId === a.id) {
+                            setEditingAlertId(null);
+                            setDraftAlert(makeBlankAlert());
+                          }
+                          handleChange({
+                            ...config,
+                            alerts: alerts.filter((x) => x.id !== a.id),
+                          });
+                        }}
+                      />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </AccordionItem>
       </Accordion>
     </div>
-  );
+    );
+  };
 
   const renderTimeTab = () => {
     const timeType = config.timeType ?? 'fixed';
@@ -960,10 +1176,11 @@ export function DataPointConfiguration({
                 </SelectInput>
               </div>
 
-              <DateSelectorGroup label="Days">
-                {DAY_OPTIONS.map((d) => (
+              <DateSelectorGroup label="Days" className="dpc-day-selector-full">
+                {DAY_OPTIONS.map((d, i) => (
                   <DateSelectorButton
-                    label={d}
+                    key={d}
+                    label={DAY_LABELS[i]}
                     isActive={cycleDays.includes(d)}
                     onClick={() => {
                       const next = cycleDays.includes(d)
@@ -1038,10 +1255,16 @@ export function DataPointConfiguration({
                             }
                             trailing={
                               <div className="dpc-duration-actions">
-                                <Button
-                                  label={isDefault ? 'Unset' : 'Default'}
+                                <IconButton
+                                  icon={
+                                    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                      <path d="M8 1L9.854 5.918L15 6.382L11.25 9.618L12.472 14.618L8 12L3.528 14.618L4.75 9.618L1 6.382L6.146 5.918L8 1Z" fill="currentColor"/>
+                                    </svg>
+                                  }
                                   variant="Tertiary"
+                                  color={isDefault ? 'Positive' : 'Primary'}
                                   size="Small"
+                                  title={isDefault ? 'Unset default' : 'Set as default'}
                                   onClick={() =>
                                     handleChange({
                                       ...config,
@@ -1049,20 +1272,30 @@ export function DataPointConfiguration({
                                     })
                                   }
                                 />
-                                <Button
-                                  label="Edit"
+                                <IconButton
+                                  icon={
+                                    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                      <path d="M11.586 2a2 2 0 0 1 2.828 2.828l-8.5 8.5A2 2 0 0 1 4.5 14H3a1 1 0 0 1-1-1v-1.5a2 2 0 0 1 .586-1.414l8.5-8.5ZM12 3.414 12.586 4 4.5 12.086 3 12v-1.5l8.086-8.086Z" fill="currentColor"/>
+                                    </svg>
+                                  }
                                   variant="Tertiary"
                                   size="Small"
+                                  title="Edit"
                                   onClick={() => {
                                     setDraftDuration({ ...d });
                                     setEditingDurationId(d.id);
                                   }}
                                 />
-                                <Button
-                                  label="Delete"
+                                <IconButton
+                                  icon={
+                                    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                      <path d="M6 2a1 1 0 0 0-1 1H3a1 1 0 0 0 0 2h10a1 1 0 0 0 0-2h-2a1 1 0 0 0-1-1H6ZM4 7a1 1 0 0 1 1 1v4a1 1 0 0 0 1 1h4a1 1 0 0 0 1-1V8a1 1 0 1 1 2 0v4a3 3 0 0 1-3 3H6a3 3 0 0 1-3-3V8a1 1 0 0 1 1-1Z" fill="currentColor"/>
+                                    </svg>
+                                  }
                                   variant="Tertiary"
                                   color="Negative"
                                   size="Small"
+                                  title="Delete"
                                   onClick={() => {
                                     const arr = durations.filter((x) => x.id !== d.id);
                                     handleChange({

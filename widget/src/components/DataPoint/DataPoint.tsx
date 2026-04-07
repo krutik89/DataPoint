@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Card, Spinner } from '@faclon-labs/design-sdk';
-import { getDataPointValue } from '../../iosense-sdk/api';
+import { getDataPointValue, resolveDuration } from '../../iosense-sdk/api';
 import type { WidgetConfig } from '../../iosense-sdk/types';
 import './DataPoint.css';
 
@@ -31,8 +31,12 @@ export function DataPoint({ config, authentication }: DataPointProps) {
   const source = localConfig?.source;
   const precision = source?.precision ?? 2;
   const unit = localConfig?.unit ?? '';
-  const timeRangeHours = localConfig?.timeRangeHours ?? 24;
   const timezone = localConfig?.timezone ?? 'Asia/Calcutta';
+
+  // Resolve time range: prefer the default duration, fallback to timeRangeHours
+  const durations = localConfig?.durations ?? [];
+  const defaultDuration = durations.find((d) => d.id === localConfig?.defaultDurationId);
+  const timeRangeHours = localConfig?.timeRangeHours ?? 24;
 
   const sourceReady =
     !!source &&
@@ -52,8 +56,9 @@ export function DataPoint({ config, authentication }: DataPointProps) {
     setErrorMsg('');
 
     const debounceId = setTimeout(() => {
-      const endTime = Date.now();
-      const startTime = endTime - timeRangeHours * 3_600_000;
+      const { startTime, endTime } = defaultDuration
+        ? resolveDuration(defaultDuration)
+        : { startTime: Date.now() - timeRangeHours * 3_600_000, endTime: Date.now() };
 
       getDataPointValue({
         authentication,
@@ -97,13 +102,37 @@ export function DataPoint({ config, authentication }: DataPointProps) {
     sourceReady,
     timeRangeHours,
     timezone,
+    defaultDuration?.id,
+    defaultDuration?.xNumber,
+    defaultDuration?.xPeriod,
+    defaultDuration?.xEvent,
+    defaultDuration?.yNumber,
+    defaultDuration?.yPeriod,
+    defaultDuration?.yEvent,
+    defaultDuration?.navigation,
   ]);
+
+  // Evaluate alert conditions against the current value
+  const alerts = localConfig?.alerts ?? [];
+  const matchedAlert = value !== null
+    ? alerts.find((a) => {
+        switch (a.operator) {
+          case '>':  return value > a.value;
+          case '<':  return value < a.value;
+          case '>=': return value >= a.value;
+          case '<=': return value <= a.value;
+          case '==': return value === a.value;
+          case '!=': return value !== a.value;
+          default:   return false;
+        }
+      })
+    : undefined;
 
   const wrapInCard = localConfig?.wrapInCard ?? true;
   const cardStyle: React.CSSProperties = wrapInCard
     ? {
-        background: localConfig?.backgroundColor ?? 'var(--background-default-intense)',
-        borderColor: localConfig?.borderColor ?? 'var(--border-gray-default)',
+        background: matchedAlert?.backgroundColor || localConfig?.backgroundColor || 'var(--background-default-intense)',
+        borderColor: matchedAlert?.borderColor || localConfig?.borderColor || 'var(--border-gray-default)',
         borderWidth: `${localConfig?.borderWidth ?? 1}px`,
         borderStyle: 'solid',
         borderRadius: `${localConfig?.borderRadius ?? 8}px`,
@@ -112,17 +141,17 @@ export function DataPoint({ config, authentication }: DataPointProps) {
     : { background: 'transparent', border: 'none', padding: 0 };
 
   const titleStyle: React.CSSProperties = {
-    color: localConfig?.titleColor ?? 'var(--text-default-secondary)',
+    color: matchedAlert?.textColor || localConfig?.titleColor || 'var(--text-default-secondary)',
     fontSize: `${localConfig?.titleFontSize ?? 14}px`,
   };
 
   const valueStyle: React.CSSProperties = {
-    color: localConfig?.valueColor ?? 'var(--text-default-primary)',
+    color: matchedAlert?.valueColor || localConfig?.valueColor || 'var(--text-default-primary)',
     fontSize: `${localConfig?.valueFontSize ?? 36}px`,
   };
 
   const unitStyle: React.CSSProperties = {
-    color: localConfig?.unitColor ?? 'var(--text-default-tertiary)',
+    color: matchedAlert?.unitColor || localConfig?.unitColor || 'var(--text-default-tertiary)',
     fontSize: `${localConfig?.unitFontSize ?? 16}px`,
   };
 
@@ -160,15 +189,6 @@ export function DataPoint({ config, authentication }: DataPointProps) {
         )}
       </div>
 
-      {source && (
-        <div className="data-point__meta">
-          {source.sourceType === 'device' &&
-            `${source.devName ?? ''} · ${source.sensorName ?? ''} · ${source.operator ?? ''}`}
-          {source.sourceType === 'cluster' &&
-            `${source.clusterName ?? source.clusterID ?? ''} · ${source.clusterOperator ?? ''}`}
-          {source.sourceType === 'compute' && `Flow: ${source.flowId ?? ''}`}
-        </div>
-      )}
     </div>
   );
 }
