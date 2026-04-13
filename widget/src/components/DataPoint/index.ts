@@ -4,8 +4,10 @@ import { DataPoint } from './DataPoint';
 import type { WidgetConfig } from '../../iosense-sdk/types';
 
 interface WidgetProps {
-  config: WidgetConfig;
-  authentication: string;
+  config?: WidgetConfig;
+  data: number | null;
+  isLoading: boolean;
+  error?: string;
 }
 
 const roots = new Map<string, ReturnType<typeof createRoot>>();
