@@ -49,7 +49,7 @@ export interface Duration {
   periodicity: DurationPeriod;
 }
 
-export type SourceType = 'device' | 'cluster' | 'compute';
+export type SourceType = 'device' | 'cluster' | 'compute' | 'custom';
 
 export type AlertOperator = '>' | '<' | '>=' | '<=' | '==' | '!=';
 
@@ -83,6 +83,9 @@ export interface DataPointSource {
   // Compute source
   flowId?: string;
   flowParameters?: string;
+
+  // Custom source
+  customValue?: string;
 
   // Display
   precision?: number;

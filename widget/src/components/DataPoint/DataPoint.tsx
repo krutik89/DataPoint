@@ -64,8 +64,9 @@ export function DataPoint({ config, data, isLoading, error }: DataPointProps) {
     fontSize: `${config?.unitFontSize ?? 16}px`,
   };
 
-  const isEmpty = !isLoading && !error && data === null;
-  const isIdle = !isLoading && !error && data === null && !config?.source;
+  const isCustom = config?.source?.sourceType === 'custom';
+  const isEmpty = !isLoading && !error && data === null && !isCustom;
+  const isIdle = !isLoading && !error && data === null && !config?.source && !isCustom;
 
   return (
     <div className="data-point" style={cardStyle}>
@@ -87,7 +88,19 @@ export function DataPoint({ config, data, isLoading, error }: DataPointProps) {
         {!isLoading && error && (
           <span className="data-point__error">Error: {error}</span>
         )}
-        {!isLoading && !error && data !== null && (
+        {!isLoading && !error && config?.source?.sourceType === 'custom' && (
+          <>
+            <span className="data-point__value" style={valueStyle}>
+              {config.source.customValue ?? '—'}
+            </span>
+            {unit && (
+              <span className="data-point__unit" style={unitStyle}>
+                {unit}
+              </span>
+            )}
+          </>
+        )}
+        {!isLoading && !error && config?.source?.sourceType !== 'custom' && data !== null && (
           <>
             <span className="data-point__value" style={valueStyle}>
               {formatValue(data, precision)}

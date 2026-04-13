@@ -824,11 +824,23 @@ export function DataPointConfiguration({
               <Radio label="Device" value="device" />
               <Radio label="Cluster" value="cluster" />
               <Radio label="Compute" value="compute" />
+              <Radio label="Custom" value="custom" />
             </RadioGroup>
 
             {sourceType === 'device' && renderDeviceFields()}
             {sourceType === 'cluster' && renderClusterFields()}
             {sourceType === 'compute' && renderComputeFields()}
+            {sourceType === 'custom' && (
+              <TextInput
+                label="Custom Value"
+                name="dp-custom-value"
+                placeholder="Enter a value to display…"
+                value={source.customValue ?? ''}
+                onChange={({ value: v }: { value: string }) =>
+                  updateSource({ customValue: v })
+                }
+              />
+            )}
 
             <TextInput
               label="Unit"

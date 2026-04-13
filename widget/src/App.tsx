@@ -54,9 +54,18 @@ export default function App() {
     !!source &&
     ((source.sourceType === 'device' && source.devID && source.sensorId && source.operator) ||
       (source.sourceType === 'cluster' && source.clusterID && source.clusterOperator) ||
-      (source.sourceType === 'compute' && source.flowId));
+      (source.sourceType === 'compute' && source.flowId) ||
+      source.sourceType === 'custom');
 
   useEffect(() => {
+    // Custom type: no fetch needed — value comes directly from config
+    if (source?.sourceType === 'custom') {
+      setData(null);
+      setIsLoading(false);
+      setFetchError(undefined);
+      return;
+    }
+
     if (!authenticated || !source || !sourceReady) {
       setData(null);
       setIsLoading(false);
