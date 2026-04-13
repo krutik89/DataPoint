@@ -40,10 +40,8 @@ function unmount(id: string) {
 
 declare global {
   interface Window {
-    ReactWidgets: Record<
-      string,
-      { mount: typeof mount; update: typeof update; unmount: typeof unmount }
-    >;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    ReactWidgets: Record<string, any>;
   }
 }
 

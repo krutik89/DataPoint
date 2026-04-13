@@ -10,7 +10,8 @@ export interface DataPointProps {
   error?: string;
 }
 
-function formatValue(v: number, precision: number): string {
+function formatValue(v: number | null | undefined, precision: number): string {
+  if (v === null || v === undefined) return '--';
   return v.toLocaleString(undefined, {
     minimumFractionDigits: precision,
     maximumFractionDigits: precision,

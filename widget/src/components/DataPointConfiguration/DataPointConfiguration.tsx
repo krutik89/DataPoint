@@ -145,8 +145,8 @@ const MINUTE_OPTIONS = Array.from({ length: 60 }, (_, i) => ({
   label: String(i).padStart(2, '0'),
 }));
 
-const DAY_OPTIONS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
-const DAY_LABELS  = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
+const DAY_OPTIONS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+const DAY_LABELS  = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
 
 const TIME_RANGE_OPTIONS = [
   { value: '1',   label: 'Last 1 hour' },
